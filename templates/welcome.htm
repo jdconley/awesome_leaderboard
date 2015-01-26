@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+	<title>JD's Awesome Leaderboard</title>
+	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+	<script type="text/javascript">
+		$(function(){
+			//Hookup the handlers on the forms.
+			$("#scoreform").submit(function(e){
+				$.post('/score', $("#scoreform").serialize(), success:function(data){alert(data);});
+				e.preventDefault();
+				return false;
+			});
+
+			$("#generateform").submit(function(e){
+				$.post('/generate', $("#generateform").serialize(), success:function(data){alert(data);});
+				e.preventDefault();
+				return false;
+			});
+		});
+	</script>
+</head>
+<body>
+	<div class="header">
+		<h2>JD's Awesome Leaderboard</h2>
+	</div>
+	<div class="content">
+		<h3>Pre-reqs</h3>
+		<ol>
+			<li>A Web Server</li>
+			<li>PHP 5.3</li>
+			<li>Redis 2.4 running locally on the defualt port</li>
+		</ol>
+
+		<h3>Info</h3>
+		<p>This leaderboard supports the required features. I decided to use calendar days rather than time differences, as those tend to resonate better with players. For instance, the list of most improved this week is for the calendar week starting on the previous Sunday.</p>
+		<ol>
+			<li>Stores player metadata</li>
+			<li>Stores score data</li>
+			<li>Fast querying of top 10 all time scores</li>
+			<li>Fast querying of most improved this week</li>
+			<li>Fast querying of total player count</li>
+			<li>Fast querying of players that have played today</li>
+			<li>A utility to generate <em>N</em> new players, and 0-10 scores for each player (to get the requested 1MM scores you should add 200,000 players)</li>
+		</ol>
+
+		<h4>Add a Score</h4>
+		<form method="post" action="/score" id="scoreform">
+			Score: <input type="text" name="score" value="0" />
+			<input type="submit" value="Submit" id="postScore"/>
+		</form>
+
+		<h4>Generate Random Players/Scores</h4>
+		<p>Note: This will take a bit (about 5 minutes for 200k on my Mac Book Pro 13"), since it is single threaded and re-sorts the leaderboard on every insert. This is obviously stupidly inefficient &ndash; O(log(n))*n &ndash; but I don't have time to speed it up. The approach I would take is to push everything into a temporary list, then do a sort once on that list using the Redis "SORT by STORE" command.</p>
+		<form method="post" action="/generate" id="generateform">
+			Player Count: <input type="text" name="count" value="200000" />
+			<input type="submit" value="Submit" id="generateUsers"/>
+		</form>
+
+		<h4>Empty DB</h4>
+		<form method="post" action="/flush" id="scoreform">
+			Empty the database
+			<input type="submit" value="Do It" />
+		</form>
+
+		<h4>Top 10</h4>
+		<table>
+			<tr><th>Rank</th><th>Player</th><th>Score</th></tr>
+			<?php
+				foreach(F3::get('top10') as $score) {
+					echo '<tr>';
+					echo  '<td>'.$score['rank'].'</td><td>'.$score['uid'].'</td><td>'.$score['score'].'</td>';
+					echo "</tr>\n";
+				}
+			?>
+		</table>
+
+
+		<h4>Top 10 Improved This Week</h4>
+		<table>
+			<tr><th>Rank</th><th>Player</th><th>Score</th></tr>
+			<?php
+				foreach(F3::get('top10_weekly_improved') as $score) {
+					echo '<tr>';
+					echo  '<td>'.$score['rank'].'</td><td>'.$score['uid'].'</td><td>'.$score['score'].'</td>';
+					echo "</tr>\n";
+				}
+			?>
+		</table>
+
+		<h4>Total Players</h4>
+		<p><?php echo F3::get('total_players'); ?></p>
+
+		<h4>How Many Played Today</h4>
+		<p><?php echo F3::get('today_players'); ?></p>
+	</div>
+	<div class="footer">
+		<h5>Copyright &copy; 2012 JD Conley</h5>
+	</div>
+</body>
+</html>
